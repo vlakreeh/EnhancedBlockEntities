@@ -138,6 +138,6 @@ public class EnhancedBlockEntities implements ClientModInitializer {
                         ModelSelector.CHEST
                 )
         ));
-        FabricModelPredicateProviderRegistry.register(Items.CHEST, new Identifier("is_christmas"), (stack, world, entity) -> DateUtil.isChristmas() ? 1 : 0);
+        FabricModelPredicateProviderRegistry.register(Items.CHEST, new Identifier("is_christmas"), (stack, world, entity, seed) -> DateUtil.isChristmas() ? 1 : 0);
     }
 }

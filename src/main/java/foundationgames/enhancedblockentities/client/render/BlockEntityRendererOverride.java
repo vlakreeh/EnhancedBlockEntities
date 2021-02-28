@@ -11,8 +11,8 @@ import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.model.BakedModel;
 import net.minecraft.client.render.model.BakedQuad;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.client.util.math.Vector3f;
 import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Vec3f;
 
 import java.util.Random;
 import java.util.function.Function;
@@ -37,13 +37,13 @@ public abstract class BlockEntityRendererOverride {
                     matrices.push();
                     matrices.translate(0.5f, 0, 0.5f);
                     Direction dir = blockEntity.getCachedState().get(ChestBlock.FACING);
-                    matrices.multiply(Vector3f.POSITIVE_Y.getDegreesQuaternion(180 - dir.asRotation()));
+                    matrices.multiply(Vec3f.POSITIVE_Y.getDegreesQuaternion(180 - dir.asRotation()));
                     matrices.translate(-0.5f, 0, -0.5f);
                     matrices.translate(0, yPiv, zPiv);
                     float rot = ((ChestAnimationProgress)blockEntity).getAnimationProgress(tickDelta);
                     rot = 1f - rot;
                     rot = 1f - (rot * rot * rot);
-                    matrices.multiply(Vector3f.POSITIVE_X.getDegreesQuaternion(rot * 90));
+                    matrices.multiply(Vec3f.POSITIVE_X.getDegreesQuaternion(rot * 90));
                     matrices.translate(0, -yPiv, -zPiv);
                     renderBakedModel(vertexConsumers.getBuffer(RenderLayer.getSolid()), matrices, models[selector.apply(blockEntity)], light, overlay, dir);
                     matrices.pop();

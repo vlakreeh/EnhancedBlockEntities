@@ -1,55 +1,56 @@
 package foundationgames.enhancedblockentities.mixin;
 
+import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityType;
+import net.minecraft.block.entity.ChestLidAnimator;
 import net.minecraft.block.entity.EnderChestBlockEntity;
 import net.minecraft.client.MinecraftClient;
-import org.objectweb.asm.Opcodes;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Slice;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(EnderChestBlockEntity.class)
 public abstract class EnderChestBlockEntityMixin extends BlockEntity {
     @Shadow
-    public float animationProgress;
+    @Final
+    private ChestLidAnimator lidAnimator;
     private int rebuildScheduler = 0;
 
-    protected EnderChestBlockEntityMixin(BlockEntityType<?> blockEntityType) {
-        super(blockEntityType);
+    protected EnderChestBlockEntityMixin(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState state) {
+        super(blockEntityType, pos, state);
     }
 
-    @Inject(method = "tick", at = @At(
-            value = "INVOKE", target = "Lnet/minecraft/world/World;playSound(Lnet/minecraft/entity/player/PlayerEntity;DDDLnet/minecraft/sound/SoundEvent;Lnet/minecraft/sound/SoundCategory;FF)V", shift = At.Shift.AFTER, ordinal = 0
-    ))
-    public void listenForOpen(CallbackInfo ci) {
-        if(this.world.isClient()) {
-            rebuildChunk();
+    @Inject(method = "clientTick", at = @At("RETURN"))
+    private static void clientTickHook(World world, BlockPos pos, BlockState state, EnderChestBlockEntity blockEntity, CallbackInfo ci) {
+        @SuppressWarnings("all")
+        EnderChestBlockEntityMixin blockEntityMixin = (EnderChestBlockEntityMixin) (Object) blockEntity;
+
+        if(blockEntityMixin.rebuildScheduler > 0) {
+            blockEntityMixin.rebuildScheduler--;
+            if(blockEntityMixin.rebuildScheduler <= 0) blockEntityMixin.rebuildChunk();
         }
-    }
 
+        ChestLidAnimatorMixinExt lidAccessorExt = (ChestLidAnimatorMixinExt) blockEntityMixin.lidAnimator;
 
-    @Inject(method = "tick", at = @At(
-            value = "JUMP", opcode = Opcodes.IFGE, ordinal = 0, shift = At.Shift.BEFORE
-    ), slice = @Slice(
-            from = @At(value = "INVOKE", target = "Lnet/minecraft/world/World;playSound(Lnet/minecraft/entity/player/PlayerEntity;DDDLnet/minecraft/sound/SoundEvent;Lnet/minecraft/sound/SoundCategory;FF)V", shift = At.Shift.AFTER, ordinal = 1)
-    ))
-    public void listenForClose(CallbackInfo ci) {
-        if(this.world.isClient()) {
-            if(this.animationProgress <= 0) {
-                rebuildScheduler = 1;
-            }
-        }
-    }
+        float progress = lidAccessorExt.getProgress();
+        float lastProgress = lidAccessorExt.getLastProgress();
 
-    @Inject(method = "tick", at = @At("HEAD"))
-    public void rebuildIfNeeded(CallbackInfo ci) {
-        if(rebuildScheduler > 0) {
-            rebuildScheduler--;
-            if(rebuildScheduler <= 0) rebuildChunk();
+        boolean sameProgress = progress == lastProgress;
+
+        if (sameProgress) return;
+
+        float progressDelta = progress - lastProgress;
+
+        if (progressDelta > 0 && lastProgress == 0) {
+            blockEntityMixin.rebuildChunk();
+        } else if (progressDelta < 0 && progress == 0) {
+            blockEntityMixin.rebuildScheduler = 1;
         }
     }
 
